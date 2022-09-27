@@ -50,7 +50,8 @@ router.post("/studentadd", async (req, res) => {
     //TODO: doesn't working
     User.findById(student_id, (err, docs) => {
       if (err) {
-        return res.status(403).send("student not found");
+        res.status(403).send("student not found");
+        return process.exit(1);
       }
     });
 

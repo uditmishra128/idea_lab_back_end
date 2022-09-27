@@ -79,36 +79,34 @@ router.post(
   ],
   async (req, res) => {
     const { email, otp } = req.body;
-    let user = await User.findOne({ email });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     try {
+      console.log("Credentials obtained, sending message...");
 
-        console.log("Credentials obtained, sending message...");
+      var transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: config.get("email"),
+          pass: config.get("password"),
+        },
+      });
 
-        var transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: '',
-            pass: ''
-          }
-      })
+      // Message object
+      let message = {
+        // Comma separated list of recipients
+        to: email,
 
-        // Message object
-        let message = {
-          // Comma separated list of recipients
-          to: email,
+        // Subject of the message
+        subject: "Registration OTP for IDEA Lab",
 
-          // Subject of the message
-          subject: "Nodemailer is unicode friendly ✔" + Date.now(),
+        // plaintext body
+        text: "Hello to myself!",
 
-          // plaintext body
-          text: "Hello to myself!",
-
-          html: `<div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">
+        html: `<div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">
             <div style="margin:50px auto;width:70%;padding:20px 0">
               <div style="border-bottom:1px solid #eee">
                 <a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">LNCT IDEA LAB</a>
@@ -120,22 +118,20 @@ router.post(
               <hr style="border:none;border-top:1px solid #eee" />
             </div>
           </div>`,
+      };
 
-        };
+      transporter.sendMail(message, (error, info) => {
+        if (error) {
+          console.log("Error occurred");
+          console.log(error.message);
+          return process.exit(1);
+        }
 
-        transporter.sendMail(message, (error, info) => {
-          if (error) {
-            console.log("Error occurred");
-            console.log(error.message);
-            return process.exit(1);
-          }
+        console.log("Message sent successfully!");
 
-          console.log("Message sent successfully!");
-        
-          transporter.close();
-          res.send("Message send success!")
-        });
-     
+        transporter.close();
+        res.send("Message send success!");
+      });
     } catch (err) {
       console.log(err.message);
       res.status(500).send("Server error");
