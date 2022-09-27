@@ -86,37 +86,21 @@ router.post(
     }
 
     try {
-      nodemailer.createTestAccount((err, account) => {
-        if (err) {
-          console.error("Failed to create a testing account");
-          console.error(err);
-          return process.exit(1);
-        }
 
         console.log("Credentials obtained, sending message...");
-        let transporter = nodemailer.createTransport(
-          {
-            host: account.smtp.host,
-            port: account.smtp.port,
-            secure: account.smtp.secure,
-            auth: {
-              user: account.user,
-              pass: account.pass,
-            },
-            logger: true,
-            transactionLog: true, // include SMTP traffic in the logs
-            allowInternalNetworkInterfaces: false,
-          },
-          {
-            // sender info
-            from: "Nodemailer <example@nodemailer.com>",
+
+        var transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: '',
+            pass: ''
           }
-        );
+      })
 
         // Message object
         let message = {
           // Comma separated list of recipients
-          to: "Nodemailer uditmishra128@gmail.com",
+          to: email,
 
           // Subject of the message
           subject: "Nodemailer is unicode friendly ✔" + Date.now(),
@@ -137,9 +121,6 @@ router.post(
             </div>
           </div>`,
 
-          list: {
-            help: "admin@example.com?subject=help",
-          },
         };
 
         transporter.sendMail(message, (error, info) => {
@@ -150,10 +131,11 @@ router.post(
           }
 
           console.log("Message sent successfully!");
-          console.log(nodemailer.getTestMessageUrl(info));
+        
           transporter.close();
+          res.send("Message send success!")
         });
-      });
+     
     } catch (err) {
       console.log(err.message);
       res.status(500).send("Server error");
