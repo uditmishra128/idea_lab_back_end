@@ -1,81 +1,164 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const auth = require('../../middleware/auth');
-const User = require('../../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const config = require('config');
-const { check, validationResult } = require('express-validator'); 
-
+const auth = require("../../middleware/auth");
+const User = require("../../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const config = require("config");
+const { check, validationResult } = require("express-validator");
+const { ROLE } = require("../../config/constant");
+const Admin = require("../../models/admin");
 
 // @route   Get /api/auth
-// @desc    Test route
+// @desc    ADMIN
 // @access  Public
 
-router.get('/', auth, async (req, res) => {
-    try{
-        const user = await User.findById(req.user.id).select('-password');
-        res.json(user);
-    } catch(err) {
-        console.log(err.message);
-        res.status(500).send('Server Error');
+router.post(
+  "/admin",
+  [
+    check("email", "Enter a valid email id").isEmail(),
+    check("password", "Invalid password").exists(),
+  ],
+  auth.authRole(ROLE.ADMIN),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-});
+
+    const { email, password } = req.body;
+
+    try {
+      let user = await Admin.findOne({ email });
+      if (!user) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: "Invalid credentials" }] });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res
+          .status(400)
+          .json({ errors: [{ msg: "Invalid credentials" }] });
+      }
+      // Return json web token
+
+      const payload = {
+        user: {
+          id: user.id,
+        },
+      };
+
+      jwt.sign(
+        payload,
+        config.get("jwtToken"),
+        { expiresIn: 360000 },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.log(err.message);
+      res.status(500).send("Server error");
+    }
+  }
+);
 
 // @route   Post /api/auth
 // @desc    Authenticate user & get token
 // @access  Public
 
-router.post('/', [
-    check('email', 'Enter a valid email id').isEmail(),
-    check('password', 'Invalid password').exists()    
-],
-async (req, res) => {
+router.post(
+  "/sendOtp",
+  [
+    check("email", "Enter a valid email id").isEmail(),
+    check("otp", "Otp is required ").exists(),
+  ],
+  async (req, res) => {
+    const { email, otp } = req.body;
+    let user = await User.findOne({ email });
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
-
-    try{
-        // Check if user exist
-
-        let user = await User.findOne({ email });
-        if(!user) {
-            return res.status(400).json({ errors: [
-                {msg: 'Invalid credentials'}
-            ] });
+    try {
+      nodemailer.createTestAccount((err, account) => {
+        if (err) {
+          console.error("Failed to create a testing account");
+          console.error(err);
+          return process.exit(1);
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if(!isMatch) {
-            return res.status(400).json({ errors: [
-                {msg: 'Invalid credentials'}
-            ] });
-        }
+        console.log("Credentials obtained, sending message...");
+        let transporter = nodemailer.createTransport(
+          {
+            host: account.smtp.host,
+            port: account.smtp.port,
+            secure: account.smtp.secure,
+            auth: {
+              user: account.user,
+              pass: account.pass,
+            },
+            logger: true,
+            transactionLog: true, // include SMTP traffic in the logs
+            allowInternalNetworkInterfaces: false,
+          },
+          {
+            // sender info
+            from: "Nodemailer <example@nodemailer.com>",
+          }
+        );
 
-        // Return json web token
+        // Message object
+        let message = {
+          // Comma separated list of recipients
+          to: "Nodemailer uditmishra128@gmail.com",
 
-        const payload = {
-            user: {
-                id: user.id
-            }
+          // Subject of the message
+          subject: "Nodemailer is unicode friendly ✔" + Date.now(),
+
+          // plaintext body
+          text: "Hello to myself!",
+
+          html: `<div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">
+            <div style="margin:50px auto;width:70%;padding:20px 0">
+              <div style="border-bottom:1px solid #eee">
+                <a href="" style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">LNCT IDEA LAB</a>
+              </div>
+              <p style="font-size:1.1em">Hi,</p>
+              <p> Use the following OTP to complete your Sign Up procedures. OTP is valid for 5 minutes</p>
+              <h2 style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">${otp}</h2>
+              <p style="font-size:0.9em;">Regards,<br />AICTE IDEA Lab LNCT</p>
+              <hr style="border:none;border-top:1px solid #eee" />
+            </div>
+          </div>`,
+
+          list: {
+            help: "admin@example.com?subject=help",
+          },
         };
 
-        jwt.sign(
-            payload,
-            config.get('jwtToken'),
-            {expiresIn: 360000},
-            (err, token) => {
-                if(err) throw err;
-                res.json({ token });
-            }
-        );     
-    } catch(err) {
-        console.log(err.message);
-        res.status(500).send('Server error');
+        transporter.sendMail(message, (error, info) => {
+          if (error) {
+            console.log("Error occurred");
+            console.log(error.message);
+            return process.exit(1);
+          }
+
+          console.log("Message sent successfully!");
+          console.log(nodemailer.getTestMessageUrl(info));
+          transporter.close();
+        });
+      });
+    } catch (err) {
+      console.log(err.message);
+      res.status(500).send("Server error");
     }
-});
+  }
+);
 
 module.exports = router;
