@@ -83,10 +83,8 @@ router.post(
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-
+    let user = await User.findOne({ email });
     try {
-      console.log("Credentials obtained, sending message...");
-
       var transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
@@ -130,7 +128,25 @@ router.post(
         console.log("Message sent successfully!");
 
         transporter.close();
-        res.send("Message send success!");
+        if (user) {
+          const payload = {
+            user: {
+              id: user.id,
+            },
+          };
+
+          jwt.sign(
+            payload,
+            config.get("jwtToken"),
+            { expiresIn: 360000 },
+            (err, token) => {
+              if (err) throw err;
+              return res.send({ success: { send: true, token: token } });
+            }
+          );
+        } else {
+          res.send({ success: { send: true } });
+        }
       });
     } catch (err) {
       console.log(err.message);
