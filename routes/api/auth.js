@@ -141,7 +141,9 @@ router.post(
             { expiresIn: 360000 },
             (err, token) => {
               if (err) throw err;
-              return res.send({ success: { send: true, token: token } });
+              return res.send({
+                success: { send: true, token: token, user: user },
+              });
             }
           );
         } else {
