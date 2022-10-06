@@ -46,15 +46,13 @@ router.get("/getAll", (req, res) => {
 
 router.post("/studentadd", async (req, res) => {
   const { event_id, student_id } = req.body;
+  await User.findById(student_id, (err, docs) => {
+    if (err) {
+      res.status(403).send("student not found");
+      return process.exit(1);
+    }
+  });
   try {
-    //TODO: doesn't working
-    User.findById(student_id, (err, docs) => {
-      if (err) {
-        res.status(403).send("student not found");
-        return process.exit(1);
-      }
-    });
-
     EventModel.findById(event_id, async (err, event) => {
       if (err) {
         return res.status(404).json({ error: "event not found" });
