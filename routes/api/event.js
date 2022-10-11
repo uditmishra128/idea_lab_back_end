@@ -3,28 +3,45 @@ const { authUser } = require("../../middleware/auth");
 const EventModel = require("../../models/EventModel");
 const router = express.Router();
 const User = require("../../models/User");
-
+const { check, validationResult } = require("express-validator");
 // @route   Get /api/event
 // @desc    create event
 // @access  Private
 
-router.post("/create", authUser, async (req, res) => {
-  const { title, description, imgUrl, startDate, endDate } = req.body;
-  try {
-    let event = new EventModel({
-      title,
-      description,
-      imgUrl,
-      startDate,
-      endDate,
-    });
-    event.save();
-    res.send({ success: event });
-  } catch (e) {
-    console.log(err.message);
-    res.status(500).send("Server error");
+router.post(
+  "/create",
+  authUser,
+  [
+    check("title", "Title can not be empty").not().isEmpty(),
+    check("description", "Description can't be empty").not().isEmpty(),
+    check("startDate").trim().isDate().withMessage("Must be a valid date"),
+    check("endDate").trim().isDate().withMessage("Must be a valid date"),
+    // check("question", "plz add questions").not().isEmpty(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { title, description, imgUrl, startDate, endDate, question } =
+      req.body;
+    try {
+      let event = new EventModel({
+        title,
+        description,
+        imgUrl,
+        startDate,
+        endDate,
+        question,
+      });
+      event.save();
+      res.send({ success: event });
+    } catch (e) {
+      console.log(err.message);
+      res.status(500).send("Server error");
+    }
   }
-});
+);
 
 // @route   Get /api/event
 // @desc    get event
