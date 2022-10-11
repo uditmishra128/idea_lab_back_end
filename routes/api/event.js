@@ -41,26 +41,49 @@ router.get("/getAll", (req, res) => {
 });
 
 // @route   Get /api/event
+// @desc    get event by id
+// @access  Public
+
+router.get("/get/:id", (req, res) => {
+  EventModel.findById(req.params.id, function (err, result) {
+    if (err) {
+      return res.status(500).send("Server error");
+    } else {
+      res.send({ success: result });
+    }
+  });
+});
+
+// @route   Get /api/event
 // @desc    add enrollEvent
 // @access  Public
 
 router.post("/studentadd", async (req, res) => {
   const { event_id, student_id } = req.body;
-  await User.findById(student_id, (err, docs) => {
-    if (err) {
-      res.status(403).send("student not found");
-      return process.exit(1);
-    }
-  });
+  if (
+    !student_id.match(/^[0-9a-fA-F]{24}$/) ||
+    !event_id.match(/^[0-9a-fA-F]{24}$/)
+  ) {
+    return res.status(400).json({ error: "Enter a vaild id" });
+  }
   try {
-    EventModel.findById(event_id, async (err, event) => {
-      if (err) {
+    let user = await User.findById(student_id);
+    if (user) {
+      let event = await EventModel.findById(event_id);
+      if (event) {
+        if (event.studentEnroll.includes(student_id)) {
+          return res.status(400).json({ error: "student already enrolled" });
+        } else {
+          event.studentEnroll.push(student_id);
+          await event.save();
+          return res.send({ success: event });
+        }
+      } else {
         return res.status(404).json({ error: "event not found" });
       }
-      await event.studentEnroll.push(student_id);
-      await event.save();
-      return res.send({ success: event });
-    });
+    } else {
+      return res.status(403).json({ error: "student not found" });
+    }
   } catch (err) {
     console.log(err.message);
     res.status(500).send("Server error");

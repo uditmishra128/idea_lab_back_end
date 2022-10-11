@@ -5,7 +5,6 @@ const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-const config = require("config");
 const { check, validationResult } = require("express-validator");
 const { ROLE } = require("../../config/constant");
 const Admin = require("../../models/admin");
@@ -16,10 +15,7 @@ const Admin = require("../../models/admin");
 
 router.post(
   "/admin",
-  [
-    check("email", "Enter a valid email id").isEmail(),
-    check("password", "Invalid password").exists(),
-  ],
+  [check("email", "Enter a valid email id").isEmail()],
   auth.authRole(ROLE.ADMIN),
   async (req, res) => {
     const errors = validationResult(req);
@@ -53,7 +49,7 @@ router.post(
 
       jwt.sign(
         payload,
-        config.get("jwtToken"),
+        process.env.JWT_TOKEN,
         { expiresIn: 360000 },
         (err, token) => {
           if (err) throw err;
@@ -88,8 +84,8 @@ router.post(
       var transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: config.get("email"),
-          pass: config.get("password"),
+          user: process.env.EMAIL,
+          pass: process.env.PASSWORD,
         },
       });
 
@@ -117,7 +113,6 @@ router.post(
             </div>
           </div>`,
       };
-
       transporter.sendMail(message, (error, info) => {
         if (error) {
           console.log("Error occurred");
@@ -129,25 +124,11 @@ router.post(
 
         transporter.close();
         if (user) {
-          const payload = {
-            user: {
-              id: user.id,
-            },
-          };
-
-          jwt.sign(
-            payload,
-            config.get("jwtToken"),
-            { expiresIn: 360000 },
-            (err, token) => {
-              if (err) throw err;
-              return res.send({
-                success: { send: true, token: token, user: user },
-              });
-            }
-          );
+          return res.send({
+            success: { send: true, user: user },
+          });
         } else {
-          res.send({ success: { send: true } });
+          return res.send({ success: { send: true } });
         }
       });
     } catch (err) {
