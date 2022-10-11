@@ -41,6 +41,20 @@ router.get("/getAll", (req, res) => {
 });
 
 // @route   Get /api/event
+// @desc    get event
+// @access  Public
+
+router.get("/getAll", (req, res) => {
+  EventModel.find({}, function (err, result) {
+    if (err) {
+      return res.status(500).send("Server error");
+    } else {
+      res.send({ success: result });
+    }
+  });
+});
+
+// @route   Get /api/event
 // @desc    get event by id
 // @access  Public
 

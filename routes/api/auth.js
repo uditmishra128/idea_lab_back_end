@@ -79,6 +79,7 @@ router.post(
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    console.log("sendotp started2");
     let user = await User.findOne({ email });
     try {
       var transporter = nodemailer.createTransport({
@@ -113,6 +114,8 @@ router.post(
             </div>
           </div>`,
       };
+      transporter.close();
+      console.log("sendotp started2");
       transporter.sendMail(message, (error, info) => {
         if (error) {
           console.log("Error occurred");
@@ -122,7 +125,6 @@ router.post(
 
         console.log("Message sent successfully!");
 
-        transporter.close();
         if (user) {
           return res.send({
             success: { send: true, user: user },
@@ -131,6 +133,7 @@ router.post(
           return res.send({ success: { send: true } });
         }
       });
+      transporter.close();
     } catch (err) {
       console.log(err.message);
       res.status(500).send("Server error");
