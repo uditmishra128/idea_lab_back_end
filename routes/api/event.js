@@ -4,6 +4,7 @@ const EventModel = require("../../models/EventModel");
 const router = express.Router();
 const User = require("../../models/User");
 const { check, validationResult } = require("express-validator");
+
 // @route   Get /api/event
 // @desc    create event
 // @access  Private
@@ -58,15 +59,18 @@ router.get("/getAll", (req, res) => {
 });
 
 // @route   Get /api/event
-// @desc    get event
-// @access  Public
+// @desc    delete event
+// @access  Private
 
-router.get("/getAll", (req, res) => {
-  EventModel.find({}, function (err, result) {
+router.delete("/:id", authUser, (req, res) => {
+  if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ error: "Enter a vaild id" });
+  }
+  EventModel.findOneAndDelete({ _id: req.params.id }, function (err, result) {
     if (err) {
       return res.status(500).send("Server error");
     } else {
-      res.send({ success: result });
+      res.send({ success: "Deleted Successfully" });
     }
   });
 });
@@ -76,6 +80,9 @@ router.get("/getAll", (req, res) => {
 // @access  Public
 
 router.get("/get/:id", (req, res) => {
+  if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ error: "Enter a vaild id" });
+  }
   EventModel.findById(req.params.id, function (err, result) {
     if (err) {
       return res.status(500).send("Server error");
